@@ -77,16 +77,10 @@ class LayerNorm(nn.Module):
         self.bias = nn.Parameter(torch.zeros(1)) # Added
 
     def forward(self, x):
-        
-        print(f'x shape {x.shape}')
+
         mean = x.mean(dim = -1, keepdim = True)
-        print(f'mean shape {mean.shape}')
         std = x.std(dim = -1, keepdim = True)
-
-        print(f' std shape {std.shape}')
-        import sys
-        sys.exit()
-
+        
         return self.alpha * (x - mean) / (std + self.eps) + self.bias
 
 # Position-wise Feed-Forward Networks
@@ -126,9 +120,7 @@ class TransformInput(nn.Module):
 
         
         # cal QW or KW or VW
-        print(f'shape QW in {x.shape}')
         x = self.linear(x)
-        print(f'shape QW out {x.shape}')
 
         # reshape x into [batch_size, seq_len, heads, head_dim]
         x = x.view(*head_shape, self.heads, self.head_dim)
@@ -304,6 +296,7 @@ class Encoder(nn.Module):
     def forward(self, x:torch.Tensor, x_mask:torch.Tensor):
 
         for i in range(self.num_layers):
+            
             x = self.layers[i](x=x, x_mask=x_mask)
 
         return self.layer_norm(x)

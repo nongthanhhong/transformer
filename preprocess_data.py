@@ -19,9 +19,6 @@ class Tokenizer:
                         self.vocab.append(word)
             self.word2idx = {word: idx for idx, word in enumerate(self.vocab)}
             self.idx2word = {idx: word for idx, word in enumerate(self.vocab)}
-        else:
-            print('=============== Load saved Tokenizer... ==============')
-            self.load(save_path)
 
     def tokenize(self, sentence):
         return [self.word2idx.get(word, self.word2idx['<unk>']) for word in sentence.split()]
@@ -30,29 +27,16 @@ class Tokenizer:
         return ' '.join([self.idx2word[token] for token in tokens])
     
     def vocab_size(self):
-        return len(self.word2idx)
-
-    def save(self, filename):
-        with open(filename, 'wb') as f:
-            pickle.dump(self.__dict__, f)
-
-    def load(self, filename):
-        with open(filename, 'rb') as f:
-            self.__dict__.update(pickle.load(f))
-
+        return len(self.vocab)
+    
 # Define the TranslationDataset
 class TranslationDataset(Dataset):
-    def __init__(self, input_data, output_data):
+    def __init__(self, input_data, output_data, input_tokenizer, output_tokenizer):
 
-        self.input_data = process_raw_sentences(raw_data = input_data, lang = 'en')
-        self.output_data = process_raw_sentences(raw_data = output_data, lang = 'vi')
-
-        # Store the source and target tokenizers
-        self.input_tokenizer = Tokenizer(self.input_data)
-        self.input_tokenizer.save('resources/input_tokenizer.pkl')
-        self.output_tokenizer = Tokenizer(self.output_data)
-        self.output_tokenizer.save('resources/output_tokenizer.pkl')
-
+        self.input_data = input_data
+        self.output_data = output_data
+        self.input_tokenizer = input_tokenizer
+        self.output_tokenizer = output_tokenizer
         self.sos_token = torch.tensor([self.input_tokenizer.tokenize("<sos>")], dtype=torch.int64)
         self.eos_token = torch.tensor([self.input_tokenizer.tokenize("<eos>")], dtype=torch.int64)
         self.pad_token = torch.tensor([self.input_tokenizer.tokenize("<pad>")], dtype=torch.int64)
@@ -65,19 +49,26 @@ class TranslationDataset(Dataset):
     def __getitem__(self, idx):
 
         # Get the source and target data at the specified index
-        input_idx, output_idx, output_target_idx = item_creator(self, 
+        input_idx, output_idx, output_target_idx = item_creator(self.input_tokenizer,
+                                                                self.output_tokenizer,
                                                                 self.input_data[idx], 
                                                                 self.output_data[idx])
         
-        input_mask,  output_mask= create_masks(self, 
-                                               input_idx, 
+        input_mask,  output_mask= create_masks(input_idx, 
                                                output_idx)
+        
+
 
         # Double check the size of the tensors to make sure they are all seq_len long
         assert input_idx.size(0) == max_len_input
         assert output_idx.size(0) == max_len_input
         assert output_target_idx.size(0) == max_len_input
 
+        input_idx = input_idx.to(device)
+        output_idx = output_idx.to(device)
+        output_target_idx = output_target_idx.to(device)
+        input_mask = input_mask.to(device)
+        output_mask = output_mask.to(device)
 
         # Return data
         return {
@@ -90,31 +81,52 @@ class TranslationDataset(Dataset):
             "output_text": self.output_data[idx],
         }
 
+def Process_data(input_data, output_data):
+
+    input_data = process_raw_sentences(raw_data = input_data, lang = 'en')
+    output_data = process_raw_sentences(raw_data = output_data, lang = 'vi')
+
+    # Store the source and target tokenizers
+    input_tokenizer = Tokenizer(sentences=input_data)
+    output_tokenizer = Tokenizer(sentences=output_data)
+    
+    print("=======> Save tokenizer...")
+    with open('resources/input_tokenizer.pkl', 'wb') as f:
+        pickle.dump(input_tokenizer, f)
+    with open('resources/output_tokenizer.pkl', 'wb') as f:
+        pickle.dump(output_tokenizer, f)
+        
+    return input_data, output_data, input_tokenizer, output_tokenizer
+
 # Define the create_data_loader function
 def create_data_loader(input_file, output_file, batch_size):
-    
+
+
+    print('=============== Load and process raw data ===============\n')
     # Read the source and target data from the specified files
     with open(input_file, 'r', encoding='utf-8') as f:
         input_data = f.readlines()
     with open(output_file, 'r', encoding='utf-8') as f:
         output_data = f.readlines()
 
-    input_train, input_val, output_train, output_val = train_test_split(input_data, output_data, test_size=0.2, random_state=999)
+    input_data, output_data, input_tokenizer, output_tokenizer = Process_data(input_data, output_data)
 
-    print('=============== Generating train data... ==============')
+    input_train, input_val, output_train, output_val = train_test_split(input_data, output_data, test_size=0.2, random_state=999)
+    
+    print('\n=============== Generating train data loader ==============')
     # Create an instance of TranslationDataset using the provided arguments
-    train_dataset = TranslationDataset(input_train, output_train)
+    train_dataset = TranslationDataset(input_train, output_train, input_tokenizer, output_tokenizer)
     # Create a DataLoader with the specified batch size and shuffling enabled
     train_data_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
 
-    print('\n\n=============== Generating validation data... ==============')
+    print('\n=============== Generating validation data loader ==============')
     # Create an instance of TranslationDataset using the provided arguments
-    val_dataset = TranslationDataset(input_val, output_val)
+    val_dataset = TranslationDataset(input_val, output_val, input_tokenizer, output_tokenizer)
     # Create a DataLoader with the specified batch size and shuffling enabled
     val_data_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=True)
 
     # Return the DataLoader
-    return train_data_loader, val_data_loader
+    return train_data_loader, val_data_loader, input_tokenizer, output_tokenizer
 
 def process_raw_sentences(raw_data, lang):
 
@@ -132,11 +144,11 @@ def process_raw_sentences(raw_data, lang):
 
     return data
 
-def item_creator(self, input_data, output_data):
+def item_creator(input_tokenizer, output_tokenizer, input_data, output_data):
 
-    input = _padding([1] + self.input_tokenizer.tokenize(input_data) + [2])
-    output = _padding([1] + self.output_tokenizer.tokenize(output_data))
-    output_target = _padding(self.output_tokenizer.tokenize(output_data) + [2])
+    input = _padding([1] + input_tokenizer.tokenize(input_data) + [2])
+    output = _padding([1] + output_tokenizer.tokenize(output_data))
+    output_target = _padding(output_tokenizer.tokenize(output_data) + [2])
 
     return input, output, output_target
 
@@ -165,28 +177,23 @@ def _padding(tokenized_text):
     return tokenized_text
 
 def subsequent_mask(size):
-    mask = torch.triu(torch.ones((1, size, size)), diagonal=1).type(torch.int)
-    return mask == 0
+    mask = torch.triu(torch.ones((1, size, size)), diagonal=1).type(torch.int) == 0
+    return mask 
 
-def create_masks(self, input, output):
+def create_masks(input, output):
 
-    input_mask = (input != self.pad_token).unsqueeze(0).int(), # (1, seq_len)
-    output_mask = (output != self.pad_token).unsqueeze(0).int() & subsequent_mask(output.size(0)), # (1, seq_len) & (1, seq_len, seq_len),
+    input_mask = (input != pad_id).unsqueeze(0).unsqueeze(0).int(), # (1, 1, seq_len)
+    
+    output_mask = (output != pad_id).unsqueeze(0).int() & subsequent_mask(output.size(0)), # (1, seq_len) & (1, seq_len, seq_len),
 
     return input_mask[0], output_mask[0]
 
 def Data(input_file, output_file, batch_size: int = 32):
-    max_vocab_size = None # None mean take all
-    
 
     # Create the data loader
-    train_data_loader, val_data_loader = create_data_loader(input_file, 
-                                    output_file,
-                                    batch_size)
-    
-
-    input_tokenizer = Tokenizer(save_path="resources/input_tokenizer.pkl")
-    output_tokenizer = Tokenizer(save_path="resources/output_tokenizer.pkl")
+    train_data_loader, val_data_loader, input_tokenizer, output_tokenizer = create_data_loader(input_file, 
+                                                                                                output_file,
+                                                                                                batch_size)
 
     return train_data_loader, val_data_loader, input_tokenizer, output_tokenizer
     
