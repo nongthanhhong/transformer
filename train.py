@@ -15,7 +15,7 @@ from preprocess_data import *
 
 
 # Define the train function
-def train(train_data_loader, model, loss_fn, optimizer, writer, log_interval):
+def train(train_data_loader, model, loss_fn, optimizer, scheduler, writer, log_interval):
 
     # Set the model to training mode
     model.train()
@@ -47,8 +47,14 @@ def train(train_data_loader, model, loss_fn, optimizer, writer, log_interval):
 
         # Compute gradients
         loss.backward()
+        torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+
         # Update model parameters
         optimizer.step()
+        
+        # Update the learning rate
+        scheduler.step()
+
         # Accumulate total loss
         total_loss += loss.item()
         batch_total_loss += loss.item()
@@ -154,10 +160,27 @@ if __name__=='__main__':
     # Create a SummaryWriter instance for TensorBoard logging
     writer = SummaryWriter()
 
-    # Train the model
-    # set optimizer
-    optimizer = create_optimizer(model.parameters())
+    # setup warmup schedule and optimizer
+    # Define total number of training steps
+    total_steps = len(train_data_loader)
 
+    # Define warmup proportion
+    warmup_proportion = 0.1
+
+    # Compute the number of warmup steps
+    warmup_steps = int(total_steps * warmup_proportion)
+
+    # Define your optimizer
+    optimizer = create_optimizer(model.parameters())
+    
+
+    # Define your scheduler
+    scheduler = torch.optim.lr_scheduler.LambdaLR(
+        optimizer,
+        lambda step: min((step + 1) / warmup_steps, 1),
+    )
+
+    # Train the model
     print("\n=============== Start Training Phase ===============n")
     start_time = time.time()
     best_epoch = 0
@@ -168,6 +191,7 @@ if __name__=='__main__':
                            model,
                            loss_fn,
                            optimizer,
+                           scheduler,
                            writer,
                            log_interval)
         val_loss = evaluate(val_data_loader,
