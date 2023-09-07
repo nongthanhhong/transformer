@@ -52,7 +52,7 @@ def load_model():
 
     # checkpoint_path = ""
 
-    # load_checkpoint(model, optimizer, checkpoint_path)
+    load_checkpoint(model, optimizer, checkpoint_path)
 
     return model, input_tokenizer, output_tokenizer
 

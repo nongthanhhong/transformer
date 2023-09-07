@@ -1,39 +1,13 @@
-# import os
+import os
 # os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
-# import torch
-# import math
-# from model import *
-
-
-# # e = nn.Embedding(4,3)
-# # a = torch.randint(2,(5,3))
-# # print(a)
-# # print(e(a))
-# # a = torch.rand(5, 5)
-# # sm = torch.nn.Softmax(dim =1)
-# # sm_a = sm(a)
-# # print(sm_a)
-
-# # v = torch.rand(5, 7)
-
-# # print(v)
-# # dot_v = torch.einsum("ij, jd -> id", a, v)
-# # print(dot_v)
-
-# # print(a+v)
-
-
-# # eb = torch.rand(5, 5)
-
-# # pe = torch.rand(5, 5)
-
-# # print(eb+pe)
-
+import torch
+import math
+from model import *
 import sys
 from preprocess_data import *
-torch.manual_seed(999)
-from model import *
+from nltk.translate import bleu, bleu_score
 
+torch.manual_seed(999)
 input_file = 'English-Vietnamese translation/en_test.txt'
 output_file = 'English-Vietnamese translation/vi_test.txt'
 
@@ -46,50 +20,36 @@ output_vocab_size = output_tokenizer.vocab_size()
 print('vocab size of input and output:', input_vocab_size, output_vocab_size)
 print('size of train and val: ',len(train_data_loader), len(val_data_loader))
 
-model = Transformer(max_len=max_len_input, 
-                    input_vocab_size= input_vocab_size,
-                    output_vocab_size=output_vocab_size, 
-                    num_layers=2,
-                    heads=4,
-                    d_model=8,
-                    d_ff=7,
-                    dropout=0.1,
-                    bias=True).to(device)
-model.train()
+model = Transformer(max_len=max_len_input,
+                        input_vocab_size=input_vocab_size,
+                        output_vocab_size=output_vocab_size,
+                        num_layers=num_layers,   
+                        heads=num_heads, 
+                        d_model=d_model, 
+                        d_ff=d_ff, 
+                        dropout=drop_out_rate, 
+                        bias=True).to(device)
 
-# # batch_size = 5
-# # vocab = torch.arange(0, 9, 1, dtype=int).to(device)
-# # x = torch.randint(28,(batch_size, max_len_input))
-# # x_mask = (x != 0).unsqueeze(1).unsqueeze(1).int()
-# # x_target = torch.randint(32,(batch_size, max_len_input))
-# # target_mask = x_mask & (torch.triu(torch.ones((batch_size, 1, max_len_input, max_len_input)), diagonal=1).type(torch.int) == 0)
-
-# # x = x.to(device)
-# # x_target = x_target.to(device) 
-# # x_mask = x_mask.to(device) 
-# # target_mask = target_mask.to(device) 
-
-# # print(f'check shape:')
-# # for i in (x, x_target, x_mask, target_mask):
-# #     print(i.shape, ' = ', i)
-
-# # softmax_output_0 = model(x=x, x_mask=x_mask, x_target=x_target, target_mask=target_mask)
-# # print(softmax_output_0[0])
+checkpoint_path = "ckpt/"
+checkpoint = torch.load(checkpoint_path)
+model.load_state_dict(checkpoint['model_state_dict'])
+model.eval()
 
 print('check shape data loader')
+total_bleu = 0
 for batch in train_data_loader:
-    x, output, x_target, x_mask, target_mask, _, _ = batch.values()
+    x, output, x_target, x_mask, target_mask, in_text, out_text = batch.values()
     x = x.to(device)
     output = output.to(device) 
     x_target = x_target.to(device) 
     x_mask = x_mask.to(device) 
     target_mask = target_mask.to(device)
 
-    for k, v in batch.items():
-        try:
-            print(k, v.shape, " = ", v)
-        except:
-            print(k, len(v), " = ", v)
+    # for k, v in batch.items():
+    #     try:
+    #         print(k, v.shape, " = ", v)
+    #     except:
+    #         print(k, len(v), " = ", v)
     
     embed_input = model.input_embedding(x)
     embed_output = model.output_embedding(output)
@@ -104,60 +64,10 @@ for batch in train_data_loader:
                                         target_mask=target_mask)
 
     softmax_output_1 = model.generator(x=decoder_output)
-    print(softmax_output_1.shape)
-    break
     
+    predict_index = torch.argmax(softmax_output_1, dim=-1)
+    # print(predict_index.shape, x_target.shape)
 
+    total_bleu += bleu(predict_index, x_target)
 
-
-# # from underthesea import text_normalize, word_tokenize
-# # import re 
-# # input_file = "English-Vietnamese translation\\vi_sentences.txt"
-
-# # with open(input_file, 'r', encoding='utf-8') as f:
-# #     input_data = f.readlines()
-
-# # input_data=input_data[:10]
-# # data = []
-# # for line in input_data:
-# #     line = re.sub(r'\W+$', '', line)
-# #     data.append(word_tokenize(text_normalize(line), format="text"))
-
-# # for i in data:
-# #     print(i)
-
-# # from preprocess_data import *
-# # import numpy as np
-# # import time
-# # # Set the file paths and other parameters
-# # input_file = 'English-Vietnamese translation/en_test.txt'
-# # output_file = 'English-Vietnamese translation/vi_test.txt'
-
-# # batch_size = 5
-
-# # # Create the data loader
-# # start_time = time.time()
-# # train_data_loader, val_data_loader= create_data_loader(input_file, 
-# #                                 output_file,
-# #                                 batch_size)
-
-# # print(f'data loader take: {time.time() - start_time} s')
-
-
-# # for batch in train_data_loader:
-# #     for v in batch.values():
-# #         try:
-# #             print(v.shape)
-# #         except:
-# #             print(len(v))
-
-# #     for k, v in batch.items():
-# #         try:
-# #             print(k, v.shape)
-# #         except:
-# #             print(k, len(v))
-# #     break
-            
-# import datetime
-# now = datetime.datetime.now()
-# print(f"m{now.month}_d{now.day}_{now.hour}h_{now.minute}m.pt")
+print('BLEU score: ',total_bleu/len(train_data_loader))

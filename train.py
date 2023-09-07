@@ -12,6 +12,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from config import *
 from preprocess_data import *
+from nltk.translate import bleu, bleu_score
 
 
 # Define the train function
@@ -60,7 +61,7 @@ def train(train_data_loader, model, loss_fn, optimizer, scheduler, writer, log_i
         batch_total_loss += loss.item()
 
         # log during train
-        if (i) % log_interval == 0 :
+        if (i) % log_interval == 0 and i != 0:
             avg_loss = batch_total_loss / log_interval
             print(f'\tBatch: {i+1}/{len(train_data_loader)} | Loss: {avg_loss:.4f}')
             writer.add_scalar("Loss/train_batch", avg_loss, i + 1)
@@ -92,17 +93,17 @@ def load_checkpoint(model, optimizer, checkpoint_path):
 # Define the log_progress function
 def log_progress(epoch, train_loss, val_loss=None):
     # Log the current training epoch and training loss
-    print(f'\tEPOCH: {epoch+1}   | Train Loss: {train_loss:.4f}', end='')
+    print(f'\tEPOCH: {epoch+1} | Train Loss: {train_loss:.4f}', end='')
     if val_loss is not None:
         # If validation loss is provided, log it as well
         print(f' | Val Loss: {val_loss:.4f}', end='')
-    print()
-
+    print(' | BLEU score: ', avg_bleu, end='')
 # Define the evaluate function
 def evaluate(val_data_loader, model, loss_fn):
     # Set the model to evaluation mode
     model.eval()
     total_loss = 0
+    total_bleu = 0
     with torch.no_grad():
         for batch in val_data_loader:
             input, output, output_target, input_mask, output_mask, _, _ = batch.values()
@@ -123,8 +124,12 @@ def evaluate(val_data_loader, model, loss_fn):
             loss = loss_fn(predict.view(-1, predict.shape[-1]), output_target.view(-1))
             # Accumulate total loss.
             total_loss += loss.item()
+            predict_index = torch.argmax(predict, dim=-1)
+            total_bleu += bleu(predict_index, output_target)
+
     # Return average validation loss.
-    return total_loss / len(val_data_loader)
+    avg_bleu = total_bleu / len(val_data_loader)
+    return total_loss / len(val_data_loader), avg_bleu
 
 
 if __name__=='__main__':
@@ -194,19 +199,19 @@ if __name__=='__main__':
                            scheduler,
                            writer,
                            log_interval)
-        val_loss = evaluate(val_data_loader,
+        val_loss, avg_bleu = evaluate(val_data_loader,
                             model,
                             loss_fn)
-        log_progress(epoch, train_loss, val_loss)
+        log_progress(epoch, train_loss, val_loss, avg_bleu)
         writer.add_scalar("Loss/train_epoch", train_loss, epoch, val_loss)
         
         #check best epoch
         if val_loss < pre_loss:
             pre_loss = val_loss
-            best_epoch = epoch
+            best_epoch = epoch + 1
         
         now = datetime.datetime.now()
-        checkpoint_path = f"{ckpt_dir}/transformer_{optimizer_name}_epoch_{epoch}_loss_{val_loss:.4f}_m{now.month}_d{now.day}_{now.hour}h_{now.minute}m.pt"
+        checkpoint_path = f"{ckpt_dir}/transformer_{optimizer_name}_epoch_{epoch}_loss_{val_loss:.4f}_BLEU_{avg_bleu}_m{now.month}_d{now.day}_{now.hour}h_{now.minute}m.pt"
         save_checkpoint(model, optimizer, epoch, val_loss, checkpoint_path)
 
     end_time = time.time() - start_time

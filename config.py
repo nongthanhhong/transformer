@@ -14,7 +14,7 @@ device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cp
 # device = torch.device('cpu')
 learning_rate = 1e-4
 batch_size = 256
-max_len_input = 100
+max_len_input = 50
 num_heads = 4
 num_layers = 4
 d_model = 256
@@ -32,6 +32,6 @@ loss_fn = nn.CrossEntropyLoss(ignore_index=pad_id).to(device)
 optimizer_name = "AdamW"
 def create_optimizer(model_parameters):
  if optimizer_name == "AdamW":
-    return torch.optim.AdamW(model_parameters, lr=learning_rate, eps=1e-9)
- else:
+    return torch.optim.AdamW(model_parameters, lr=learning_rate, betas=(0.9, 0.98),eps=1e-9)
+ elif optimizer_name == "Sophia":
     return SophiaG(model_parameters, lr=learning_rate, rho=0.03)
