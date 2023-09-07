@@ -135,8 +135,8 @@ if __name__=='__main__':
 
     
     # Set the file paths and other parameters
-    input_file = 'English-Vietnamese translation/en_sentences.txt'
-    output_file = 'English-Vietnamese translation/vi_sentences.txt'
+    input_file = 'English-Vietnamese translation/en_test.txt'
+    output_file = 'English-Vietnamese translation/vi_test.txt'
 
     train_data_loader, val_data_loader, input_tokenizer, output_tokenizer = Data(input_file, 
                                                                                  output_file, 
@@ -181,7 +181,7 @@ if __name__=='__main__':
     )
 
     # Train the model
-    print("\n=============== Start Training Phase ===============n")
+    print("\n=============== Start Training Phase ===============")
     start_time = time.time()
     best_epoch = 0
     pre_loss = 10**9

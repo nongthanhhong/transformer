@@ -117,11 +117,10 @@ class TransformInput(nn.Module):
 
         # input of x will be has shape [ batch_size, seq_len, d_model]
         head_shape = x.shape[:-1] #  [ batch_size, seq_len]
-
         
         # cal QW or KW or VW
         x = self.linear(x)
-
+        
         # reshape x into [batch_size, seq_len, heads, head_dim]
         x = x.view(*head_shape, self.heads, self.head_dim)
 
@@ -166,7 +165,6 @@ class MultiHeadAttention(nn.Module):
         
         return mask
     
-
     def forward(self, *, # * mean you must put the follow arguments with its keyword
                 query: torch.Tensor, #  query, key and value all have shape [seq_len, batch_size, d_model]
                 key: torch.Tensor,
@@ -212,7 +210,7 @@ class MultiHeadAttention(nn.Module):
         x = torch.einsum("bhij,bjhd->bihd", attn, values)
 
         # concat
-        x = x.reshape(seq_len, batch_size, -1)
+        x = x.reshape(x.shape[0], x.shape[1], x.shape[2]*x.shape[3])
 
         # Liner
         x = self.output(x)
@@ -271,14 +269,16 @@ class DecoderLayer(nn.Module):
                 target_x: torch.Tensor,
                 target_mask: torch.Tensor):
         
+        # first sub layer of decoder
         target_x_norm = self.norm_masked_attn(target_x)
         masked_attn = self.masked_multi_head_attn(query=target_x_norm, key=target_x_norm, value=target_x_norm, mask=target_mask)
         residual_masked_attn = target_x + self.dropout(masked_attn)
-        
+
+        # second sub layer of decoder (that take the out out of encoder block)
         masked_x_norm = self.norm_attn(residual_masked_attn)
         encode_x_norm = self.norm_attn(encode_x)
-        attn = self.multi_head_attn(query=masked_x_norm, key=encode_x_norm, value=encode_x_norm, mask=x_mask)
-        residual_attn = masked_x_norm + self.dropout(attn)
+        attn = self.multi_head_attn(query=masked_x_norm, key=encode_x_norm, value=encode_x_norm, mask=target_mask)
+        residual_attn = residual_masked_attn + self.dropout(attn)
 
         attn_norm = self.norm_ff(residual_attn)
         ff = self.feed_forward(attn_norm)

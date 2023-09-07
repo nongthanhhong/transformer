@@ -29,32 +29,33 @@
 
 # # print(eb+pe)
 
-# import sys
-# from preprocess_data import *
-# torch.manual_seed(999)
+import sys
+from preprocess_data import *
+torch.manual_seed(999)
+from model import *
 
-# input_file = 'English-Vietnamese translation/en_test.txt'
-# output_file = 'English-Vietnamese translation/vi_test.txt'
+input_file = 'English-Vietnamese translation/en_test.txt'
+output_file = 'English-Vietnamese translation/vi_test.txt'
 
-# train_data_loader, val_data_loader, input_tokenizer, output_tokenizer = Data(input_file, 
-#                                                                             output_file, 
-#                                                                             batch_size)
-# input_vocab_size = input_tokenizer.vocab_size()
-# output_vocab_size = output_tokenizer.vocab_size()
+train_data_loader, val_data_loader, input_tokenizer, output_tokenizer = Data(input_file, 
+                                                                            output_file, 
+                                                                            batch_size)
+input_vocab_size = input_tokenizer.vocab_size()
+output_vocab_size = output_tokenizer.vocab_size()
 
-# print('vocab size of input and output:', input_vocab_size, output_vocab_size)
-# print('size of train and val: ',len(train_data_loader), len(val_data_loader))
+print('vocab size of input and output:', input_vocab_size, output_vocab_size)
+print('size of train and val: ',len(train_data_loader), len(val_data_loader))
 
-# model = Transformer(max_len=max_len_input, 
-#                     input_vocab_size= input_vocab_size,
-#                     output_vocab_size=output_vocab_size, 
-#                     num_layers=2,
-#                     heads=4,
-#                     d_model=8,
-#                     d_ff=7,
-#                     dropout=0.1,
-#                     bias=True).to(device)
-# model.train()
+model = Transformer(max_len=max_len_input, 
+                    input_vocab_size= input_vocab_size,
+                    output_vocab_size=output_vocab_size, 
+                    num_layers=2,
+                    heads=4,
+                    d_model=8,
+                    d_ff=7,
+                    dropout=0.1,
+                    bias=True).to(device)
+model.train()
 
 # # batch_size = 5
 # # vocab = torch.arange(0, 9, 1, dtype=int).to(device)
@@ -75,35 +76,36 @@
 # # softmax_output_0 = model(x=x, x_mask=x_mask, x_target=x_target, target_mask=target_mask)
 # # print(softmax_output_0[0])
 
-# print('check shape data loader')
-# for batch in train_data_loader:
-#     x, output, x_target, x_mask, target_mask, _, _ = batch.values()
-#     x = x.to(device)
-#     output = output.to(device) 
-#     x_target = x_target.to(device) 
-#     x_mask = x_mask.to(device) 
-#     target_mask = target_mask.to(device)
+print('check shape data loader')
+for batch in train_data_loader:
+    x, output, x_target, x_mask, target_mask, _, _ = batch.values()
+    x = x.to(device)
+    output = output.to(device) 
+    x_target = x_target.to(device) 
+    x_mask = x_mask.to(device) 
+    target_mask = target_mask.to(device)
 
-#     # for k, v in batch.items():
-#     #     try:
-#     #         print(k, v.shape, " = ", v)
-#     #     except:
-#     #         print(k, len(v), " = ", v)
+    for k, v in batch.items():
+        try:
+            print(k, v.shape, " = ", v)
+        except:
+            print(k, len(v), " = ", v)
     
-#     embed_input = model.input_embedding(x)
-#     embed_output = model.output_embedding(output)
+    embed_input = model.input_embedding(x)
+    embed_output = model.output_embedding(output)
 
-#     embed_w_pos_input = model.positional_encoding(embed_input)
-#     embed_w_pos_output = model.positional_encoding(embed_output)
+    embed_w_pos_input = model.positional_encoding(embed_input)
+    embed_w_pos_output = model.positional_encoding(embed_output)
 
-#     encode_input = model.encoder(x=embed_w_pos_input, x_mask=x_mask)
-#     decoder_output = model.decoder(encode_x=encode_input, 
-#                                         x_mask=x_mask, 
-#                                         target_x=embed_w_pos_output, 
-#                                         target_mask=target_mask)
+    encode_input = model.encoder(x=embed_w_pos_input, x_mask=x_mask)
+    decoder_output = model.decoder(encode_x=encode_input, 
+                                        x_mask=x_mask, 
+                                        target_x=embed_w_pos_output, 
+                                        target_mask=target_mask)
 
-#     softmax_output_1 = model.generator(x=decoder_output)
-#     print(softmax_output_1.shape)
+    softmax_output_1 = model.generator(x=decoder_output)
+    print(softmax_output_1.shape)
+    break
     
 
 
@@ -156,6 +158,6 @@
 # #             print(k, len(v))
 # #     break
             
-import datetime
-now = datetime.datetime.now()
-print(f"m{now.month}_d{now.day}_{now.hour}h_{now.minute}m.pt")
+# import datetime
+# now = datetime.datetime.now()
+# print(f"m{now.month}_d{now.day}_{now.hour}h_{now.minute}m.pt")

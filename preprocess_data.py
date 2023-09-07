@@ -111,7 +111,7 @@ def create_data_loader(input_file, output_file, batch_size):
 
     input_data, output_data, input_tokenizer, output_tokenizer = Process_data(input_data, output_data)
 
-    input_train, input_val, output_train, output_val = train_test_split(input_data, output_data, test_size=0.2, random_state=999)
+    input_train, input_val, output_train, output_val = train_test_split(input_data, output_data, test_size=0.1, random_state=999)
     
     print('\n=============== Generating train data loader ==============')
     # Create an instance of TranslationDataset using the provided arguments
@@ -153,7 +153,6 @@ def item_creator(input_tokenizer, output_tokenizer, input_data, output_data):
     return input, output, output_target
 
 def _padding(tokenized_text):
-
     
     if len(tokenized_text) < max_len_input:
         
