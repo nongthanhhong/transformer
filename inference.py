@@ -28,7 +28,7 @@ def _padding(tokenized_text):
 
 
 # load model
-def load_model():
+def load_resources():
 
     with open('resources/input_tokenizer.pkl', 'rb') as f:
         input_tokenizer = pickle.load(f)
@@ -47,13 +47,13 @@ def load_model():
                             d_ff=d_ff, 
                             dropout=drop_out_rate, 
                             bias=True).to(device)
-    model.eval()
-    optimizer = create_optimizer(model.parameters())
+    
 
     # checkpoint_path = ""
-
-    load_checkpoint(model, optimizer, checkpoint_path)
-
+    checkpoint_path = "ckpt/"
+    checkpoint = torch.load(checkpoint_path)
+    model.load_state_dict(checkpoint['model_state_dict'])
+    model.eval()
     return model, input_tokenizer, output_tokenizer
 
 
@@ -68,7 +68,7 @@ def greedy_search(encode_input, input_mask):
 # end
 if __name__=="__main__":
 
-    model, input_tokenizer, output_tokenizer = load_model()
+    model, input_tokenizer, output_tokenizer = load_resources()
 
     while True:
         try:

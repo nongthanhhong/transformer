@@ -23,7 +23,6 @@ def train(train_data_loader, model, loss_fn, optimizer, scheduler, writer, log_i
     total_loss = 0
     batch_total_loss = 0
     for i, batch in enumerate(train_data_loader):
-
         torch.cuda.empty_cache()
         input, output, output_target, input_mask, output_mask, _, _ = batch.values()
 
@@ -48,6 +47,8 @@ def train(train_data_loader, model, loss_fn, optimizer, scheduler, writer, log_i
 
         # Compute gradients
         loss.backward()
+
+        # do some tricks
         torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
 
         # Update model parameters
@@ -61,7 +62,7 @@ def train(train_data_loader, model, loss_fn, optimizer, scheduler, writer, log_i
         batch_total_loss += loss.item()
 
         # log during train
-        if (i) % log_interval == 0 and i != 0:
+        if (i+1) % log_interval == 0:
             avg_loss = batch_total_loss / log_interval
             print(f'\tBatch: {i+1}/{len(train_data_loader)} | Loss: {avg_loss:.4f}')
             writer.add_scalar("Loss/train_batch", avg_loss, i + 1)
@@ -91,13 +92,14 @@ def load_checkpoint(model, optimizer, checkpoint_path):
     return epoch, model, optimizer
 
 # Define the log_progress function
-def log_progress(epoch, train_loss, val_loss=None):
+def log_progress(epoch, train_loss, val_loss=None, avg_bleu = None):
     # Log the current training epoch and training loss
     print(f'\tEPOCH: {epoch+1} | Train Loss: {train_loss:.4f}', end='')
     if val_loss is not None:
         # If validation loss is provided, log it as well
         print(f' | Val Loss: {val_loss:.4f}', end='')
-    print(' | BLEU score: ', avg_bleu, end='')
+    print(f' | BLEU score: {avg_bleu:.2f}', end='')
+
 # Define the evaluate function
 def evaluate(val_data_loader, model, loss_fn):
     # Set the model to evaluation mode
@@ -131,7 +133,6 @@ def evaluate(val_data_loader, model, loss_fn):
     avg_bleu = total_bleu / len(val_data_loader)
     return total_loss / len(val_data_loader), avg_bleu
 
-
 if __name__=='__main__':
     parser = argparse.ArgumentParser()
     # parser.add_argument('--config-path', type=str, required=True, help="path to config file for train model")
@@ -140,8 +141,8 @@ if __name__=='__main__':
 
     
     # Set the file paths and other parameters
-    input_file = 'English-Vietnamese translation/en_test.txt'
-    output_file = 'English-Vietnamese translation/vi_test.txt'
+    input_file = 'English-Vietnamese translation/en_sentences.txt'
+    output_file = 'English-Vietnamese translation/vi_sentences.txt'
 
     train_data_loader, val_data_loader, input_tokenizer, output_tokenizer = Data(input_file, 
                                                                                  output_file, 
@@ -149,7 +150,7 @@ if __name__=='__main__':
     input_vocab_size = input_tokenizer.vocab_size()
     output_vocab_size = output_tokenizer.vocab_size()
 
-    # print(input_vocab_size, output_vocab_size)
+    print(f'Size of English vocab: {input_vocab_size}\nSize of Vietnamese vocab: {output_vocab_size}')
 
     # Create the model
     model = Transformer(max_len=max_len_input,
@@ -168,22 +169,16 @@ if __name__=='__main__':
     # setup warmup schedule and optimizer
     # Define total number of training steps
     total_steps = len(train_data_loader)
-
     # Define warmup proportion
     warmup_proportion = 0.1
-
     # Compute the number of warmup steps
     warmup_steps = int(total_steps * warmup_proportion)
-
     # Define your optimizer
     optimizer = create_optimizer(model.parameters())
-    
-
     # Define your scheduler
     scheduler = torch.optim.lr_scheduler.LambdaLR(
         optimizer,
-        lambda step: min((step + 1) / warmup_steps, 1),
-    )
+        lambda step: min((step + 1) / warmup_steps, 1))
 
     # Train the model
     print("\n=============== Start Training Phase ===============")

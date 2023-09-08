@@ -8,12 +8,12 @@ from preprocess_data import *
 from nltk.translate import bleu, bleu_score
 
 torch.manual_seed(999)
-input_file = 'English-Vietnamese translation/en_test.txt'
-output_file = 'English-Vietnamese translation/vi_test.txt'
+input_file = 'English-Vietnamese translation/en_sentences.txt'
+output_file = 'English-Vietnamese translation/vi_sentences.txt'
 
 train_data_loader, val_data_loader, input_tokenizer, output_tokenizer = Data(input_file, 
                                                                             output_file, 
-                                                                            batch_size)
+                                                                            1)
 input_vocab_size = input_tokenizer.vocab_size()
 output_vocab_size = output_tokenizer.vocab_size()
 
@@ -30,7 +30,7 @@ model = Transformer(max_len=max_len_input,
                         dropout=drop_out_rate, 
                         bias=True).to(device)
 
-checkpoint_path = "ckpt/"
+checkpoint_path = "ckpt/transformer_AdamW_epoch_6_loss_9.2316_BLEU_0.0_m9_d8_9h_42m.pt"
 checkpoint = torch.load(checkpoint_path)
 model.load_state_dict(checkpoint['model_state_dict'])
 model.eval()

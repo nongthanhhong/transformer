@@ -4,7 +4,7 @@ import math
 import numpy as np
 from typing import Optional, List
 
-# Text Embedding - Softmax
+# Text Embedding
 class TextEmbedding(nn.Module):
     def __init__(self, d_model: int, vocab_size: int):
         super().__init__()
@@ -16,8 +16,9 @@ class TextEmbedding(nn.Module):
 
     def forward(self, x: torch.Tensor):
 
+        # embed vector will have shape [max_len_input, d_model]
         embeded_x = self.embedding(x) * math.sqrt(self.d_model)
-        # embeded_x = embeded_x.view(embeded_x.size(1), embeded_x.size(0), -1)
+        
         return embeded_x
 
 # Positional Encoding (fixed version)
@@ -28,24 +29,25 @@ class PositionalEncodeing(nn.Module):
         self.d_model = d_model
         self.max_len = max_len
 
-        # create empty encoding matrix with shape [max_len, d_model]
+        # create empty encoding matrix with shape [max_len_input, d_model]
         PE = torch.zeros(max_len, d_model)
 
-        # position vector: tensor [[0], [1],..., [max_len-1]]
+        # position vector: tensor [[0], [1],..., [max_len_input-1]]
         p = torch.arange(0, max_len, dtype=torch.float32).unsqueeze(1)
         
         # take 2*i index of embedding vector: tensor [0, 2, 4, ...]
         two_i = torch.arange(0, d_model, 2, dtype=torch.float32)
 
-        # 10000**(2*i/d_model)
-        # 1/x^n = x^(-n)
-        # x^y = e^(y * ln(x))
-        div_term = torch.exp(-two_i / d_model * math.log(10000.0))
+        # 10000**(2*i/d_model) (*)
+        # with: 1/x^n = x^(-n)
+        # and: x^y = e^(y * ln(x))
+        # => (*) = e^(-(2*i/d_model) * ln(10000))
+        div_term = torch.exp(-(two_i / d_model) * math.log(10000.0))
 
         # assign each embedding vec of position encode
-        # sin for even index of embedding vectors (d_model) of each position of PE
+        # sin for even index of embedding vectors (d_model) 
         PE[:, 0::2] = torch.sin(p * div_term)
-        # cos for odd index of embedding vectors (d_model) of each position of PE
+        # cos for odd index of embedding vectors (d_model)
         PE[:, 1::2] = torch.cos(p * div_term)
         
         # Add batch dimension: shape from [max_len, d_model]-> [1, max_len, d_model]
@@ -60,7 +62,6 @@ class PositionalEncodeing(nn.Module):
         pe = self.PE
         
         # combine with input x
-        
         x += pe
 
         # dropout
@@ -70,11 +71,11 @@ class PositionalEncodeing(nn.Module):
 
 # Add & Norm
 class LayerNorm(nn.Module):
-    def __init__(self, eps: float = 10**-6):
+    def __init__(self, d_model: int, eps: float = 1e-6):
         super().__init__()
         self.eps = eps
-        self.alpha = nn.Parameter(torch.ones(1)) # Multiplied
-        self.bias = nn.Parameter(torch.zeros(1)) # Added
+        self.alpha = nn.Parameter(torch.ones(d_model)) # Multiplied
+        self.bias = nn.Parameter(torch.zeros(d_model)) # Added
 
     def forward(self, x):
 
@@ -92,16 +93,17 @@ class FeedForward(nn.Module):
         self.linear_1 = nn.Linear(d_model, d_ff)
         # W2, b2
         self.linear_2 = nn.Linear(d_ff, d_model)
+
         self.dropout = nn.Dropout(dropout)
 
     def forward(self, x):
 
         # max(0, xW1 + b1)W2 + b2 
-
         x = self.linear_1(x)
         x = torch.relu(x)
         x = self.dropout(x)
         x = self.linear_2(x)
+        # shape of x: [batch_size, max_len_input, d_model]
         return x
 
 # Transform query, key, value to queries, keys, values for heads of multi-head attention
@@ -118,7 +120,7 @@ class TransformInput(nn.Module):
         # input of x will be has shape [ batch_size, seq_len, d_model]
         head_shape = x.shape[:-1] #  [ batch_size, seq_len]
         
-        # cal QW or KW or VW
+        # calculate QW or KW or VW
         x = self.linear(x)
         
         # reshape x into [batch_size, seq_len, heads, head_dim]
@@ -145,7 +147,7 @@ class MultiHeadAttention(nn.Module):
         # Scale
         self.scale = 1 / math.sqrt(self.head_dim)
         # Softmax
-        self.softmax = nn.Softmax(dim=1)
+        self.softmax = nn.Softmax(dim=-1)
 
         # components of Multi-Head Attention
         # Linear layer
@@ -224,13 +226,16 @@ class EncoderLayer(nn.Module):
         self.heads = heads
         self.d_model = d_model
         self.d_ff = d_ff
-        self.dropout = nn.Dropout(dropout)
         self.bias = bias
 
         self.multi_head_attn = MultiHeadAttention(heads= heads, d_model=d_model, dropout=dropout, bias=bias)
-        self.norm_attn = LayerNorm()
+        self.norm_attn = LayerNorm(d_model=d_model)
+        self.dropout_1 = nn.Dropout(dropout)
+
+
         self.feed_forward = FeedForward(d_model=d_model, d_ff=d_ff, dropout=dropout)
-        self.norm_ff = LayerNorm()
+        self.norm_ff = LayerNorm(d_model=d_model)
+        self.dropout_2 = nn.Dropout(dropout)
 
     def forward(self, *,
                 x: torch.Tensor,
@@ -238,11 +243,11 @@ class EncoderLayer(nn.Module):
         
         x_norm = self.norm_attn(x)
         attn = self.multi_head_attn(query=x_norm, key=x_norm, value=x_norm, mask=x_mask)
-        residual_attn = x + self.dropout(attn)
+        residual_attn = x + self.dropout_1(attn)
 
         attn_norm = self.norm_ff(residual_attn)
         ff = self.feed_forward(attn_norm)
-        residual_ff =  residual_attn + self.dropout(ff)
+        residual_ff =  residual_attn + self.dropout_2(ff)
 
         return residual_ff
 
@@ -253,15 +258,22 @@ class DecoderLayer(nn.Module):
         self.heads = heads
         self.d_model = d_model
         self.d_ff = d_ff
-        self.dropout = nn.Dropout(dropout)
         self.bias = bias
 
+        # Sub layer 1
         self.masked_multi_head_attn = MultiHeadAttention(heads= heads, d_model=d_model, dropout=dropout, bias=bias)
-        self.norm_masked_attn = LayerNorm()
+        self.norm_masked_attn = LayerNorm(d_model=d_model)
+        self.dropout_1 = nn.Dropout(dropout)
+
+        # Sub layer 2
         self.multi_head_attn = MultiHeadAttention(heads= heads, d_model=d_model, dropout=dropout, bias=bias)
-        self.norm_attn = LayerNorm()
+        self.norm_attn = LayerNorm(d_model=d_model)
+        self.dropout_2 = nn.Dropout(dropout)
+
+        # Sub layer 3
         self.feed_forward = FeedForward(d_model=d_model, d_ff=d_ff, dropout=dropout)
-        self.norm_ff = LayerNorm()
+        self.norm_ff = LayerNorm(d_model=d_model)
+        self.dropout_3 = nn.Dropout(dropout)
 
     def forward(self, *,
                 encode_x: torch.Tensor,
@@ -272,17 +284,17 @@ class DecoderLayer(nn.Module):
         # first sub layer of decoder
         target_x_norm = self.norm_masked_attn(target_x)
         masked_attn = self.masked_multi_head_attn(query=target_x_norm, key=target_x_norm, value=target_x_norm, mask=target_mask)
-        residual_masked_attn = target_x + self.dropout(masked_attn)
+        residual_masked_attn = target_x + self.dropout_1(masked_attn)
 
         # second sub layer of decoder (that take the out out of encoder block)
         masked_x_norm = self.norm_attn(residual_masked_attn)
         encode_x_norm = self.norm_attn(encode_x)
-        attn = self.multi_head_attn(query=masked_x_norm, key=encode_x_norm, value=encode_x_norm, mask=target_mask)
-        residual_attn = residual_masked_attn + self.dropout(attn)
+        attn = self.multi_head_attn(query=masked_x_norm, key=encode_x_norm, value=encode_x_norm, mask=x_mask)
+        residual_attn = residual_masked_attn + self.dropout_2(attn)
 
         attn_norm = self.norm_ff(residual_attn)
         ff = self.feed_forward(attn_norm)
-        residual_ff =  residual_attn + self.dropout(ff)
+        residual_ff =  residual_attn + self.dropout_3(ff)
 
         return residual_ff
 
@@ -291,7 +303,7 @@ class Encoder(nn.Module):
         super().__init__()
         self.num_layers = num_layers
         self.layers = nn.ModuleList([EncoderLayer(heads=heads, d_model=d_model, d_ff=d_ff, dropout=dropout, bias=bias) for i in range(num_layers)])
-        self.layer_norm = LayerNorm()
+        self.layer_norm = LayerNorm(d_model=d_model)
 
     def forward(self, x:torch.Tensor, x_mask:torch.Tensor):
 
@@ -306,7 +318,7 @@ class Decoder(nn.Module):
         super().__init__()
         self.num_layers = num_layers
         self.layers = nn.ModuleList([DecoderLayer(heads=heads, d_model=d_model, d_ff=d_ff, dropout=dropout, bias=bias) for i in range(num_layers)])
-        self.layer_norm = LayerNorm()
+        self.layer_norm = LayerNorm(d_model=d_model)
 
     def forward(self,
                 encode_x: torch.Tensor,
