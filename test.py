@@ -8,12 +8,13 @@ from preprocess_data import *
 from nltk.translate import bleu, bleu_score
 
 torch.manual_seed(999)
-input_file = 'English-Vietnamese translation/en_sentences.txt'
-output_file = 'English-Vietnamese translation/vi_sentences.txt'
+input_file = 'English-Vietnamese translation/en_test.txt'
+output_file = 'English-Vietnamese translation/vi_test.txt'
 
 train_data_loader, val_data_loader, input_tokenizer, output_tokenizer = Data(input_file, 
                                                                             output_file, 
-                                                                            1)
+                                                                            1,
+                                                                            eval = True)
 input_vocab_size = input_tokenizer.vocab_size()
 output_vocab_size = output_tokenizer.vocab_size()
 

@@ -81,7 +81,7 @@ class TranslationDataset(Dataset):
             "output_text": self.output_data[idx],
         }
 
-def Process_data(input_data, output_data):
+def Process_data(input_data, output_data, eval):
 
     input_data = process_raw_sentences(raw_data = input_data, lang = 'en')
     output_data = process_raw_sentences(raw_data = output_data, lang = 'vi')
@@ -90,12 +90,19 @@ def Process_data(input_data, output_data):
     input_tokenizer = Tokenizer(sentences=input_data)
     output_tokenizer = Tokenizer(sentences=output_data)
     
-    print("=======> Save tokenizer...")
-    with open('resources/input_tokenizer.pkl', 'wb') as f:
-        pickle.dump(input_tokenizer, f)
-    with open('resources/output_tokenizer.pkl', 'wb') as f:
-        pickle.dump(output_tokenizer, f)
-        
+    if eval == False: 
+        print("=======> Save tokenizer...")
+        with open('resources/input_tokenizer.pkl', 'wb') as f:
+            pickle.dump(input_tokenizer, f)
+        with open('resources/output_tokenizer.pkl', 'wb') as f:
+            pickle.dump(output_tokenizer, f)
+    else: 
+        print("=======> Load tokenizer for evaluate...")
+        with open('resources/input_tokenizer.pkl', 'rb') as f:
+            input_tokenizer = pickle.load(f)
+        with open('resources/output_tokenizer.pkl', 'rb') as f:
+            output_tokenizer = pickle.load(f)
+            
     return input_data, output_data, input_tokenizer, output_tokenizer
 
 # Define the create_data_loader function
@@ -109,7 +116,7 @@ def create_data_loader(input_file, output_file, batch_size):
     with open(output_file, 'r', encoding='utf-8') as f:
         output_data = f.readlines()
 
-    input_data, output_data, input_tokenizer, output_tokenizer = Process_data(input_data, output_data)
+    input_data, output_data, input_tokenizer, output_tokenizer = Process_data(input_data, output_data, eval)
 
     input_train, input_val, output_train, output_val = train_test_split(input_data, output_data, test_size=0.1, random_state=999)
     
@@ -187,12 +194,13 @@ def create_masks(input, output):
 
     return input_mask[0], output_mask[0]
 
-def Data(input_file, output_file, batch_size: int = 32):
+def Data(input_file, output_file, batch_size: int = 32, eval=False):
 
     # Create the data loader
     train_data_loader, val_data_loader, input_tokenizer, output_tokenizer = create_data_loader(input_file, 
                                                                                                 output_file,
-                                                                                                batch_size)
+                                                                                                batch_size,
+                                                                                                eval)
 
     return train_data_loader, val_data_loader, input_tokenizer, output_tokenizer
     
