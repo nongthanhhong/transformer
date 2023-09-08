@@ -106,7 +106,7 @@ def Process_data(input_data, output_data, eval):
     return input_data, output_data, input_tokenizer, output_tokenizer
 
 # Define the create_data_loader function
-def create_data_loader(input_file, output_file, batch_size):
+def create_data_loader(input_file, output_file, batch_size, eval):
 
 
     print('=============== Load and process raw data ===============\n')
@@ -154,7 +154,7 @@ def process_raw_sentences(raw_data, lang):
 def item_creator(input_tokenizer, output_tokenizer, input_data, output_data):
 
     input = _padding([1] + input_tokenizer.tokenize(input_data) + [2])
-    output = _padding([1] + output_tokenizer.tokenize(output_data))
+    output = _padding([1] + output_tokenizer.tokenize(output_data) + [2])
     output_target = _padding(output_tokenizer.tokenize(output_data) + [2])
 
     return input, output, output_target

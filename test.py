@@ -31,12 +31,12 @@ model = Transformer(max_len=max_len_input,
                         dropout=drop_out_rate, 
                         bias=True).to(device)
 
+model.eval()
 checkpoint_path = "ckpt/transformer_AdamW_epoch_6_loss_9.2316_BLEU_0.0_m9_d8_9h_42m.pt"
 checkpoint = torch.load(checkpoint_path)
 model.load_state_dict(checkpoint['model_state_dict'])
-model.eval()
 
-print('check shape data loader')
+# print('check shape data loader')
 total_bleu = 0
 for batch in train_data_loader:
     x, output, x_target, x_mask, target_mask, in_text, out_text = batch.values()
@@ -67,8 +67,15 @@ for batch in train_data_loader:
     softmax_output_1 = model.generator(x=decoder_output)
     
     predict_index = torch.argmax(softmax_output_1, dim=-1)
-    # print(predict_index.shape, x_target.shape)
+    print(predict_index.shape, x_target.shape)
+    print('input: ', x)
+    print('input mask: ', x_mask)
+    print('output: ', output)
+    print('output mask: ', target_mask)
+    print('target: ', x_target)
+    print('predict: ', predict_index)
 
     total_bleu += bleu(predict_index, x_target)
+    break
 
 print('BLEU score: ',total_bleu/len(train_data_loader))
