@@ -163,6 +163,11 @@ if __name__=='__main__':
                         dropout=drop_out_rate, 
                         bias=True).to(device)
 
+    # Define your optimizer
+    optimizer = create_optimizer(model.parameters())
+
+    checkpoint_path = "ckpt/transformer_AdamW_epoch_7_loss_9.1570_BLEU_0.0_m9_d9_3h_54m.pt"
+    _, model, optimizer = load_checkpoint(model, optimizer, checkpoint_path)
     # Create a SummaryWriter instance for TensorBoard logging
     writer = SummaryWriter()
 
@@ -173,8 +178,6 @@ if __name__=='__main__':
     warmup_proportion = 0.1
     # Compute the number of warmup steps
     warmup_steps = int(total_steps * warmup_proportion)
-    # Define your optimizer
-    optimizer = create_optimizer(model.parameters())
     # Define your scheduler
     scheduler = torch.optim.lr_scheduler.LambdaLR(
         optimizer,

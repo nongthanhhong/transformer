@@ -71,11 +71,13 @@ for batch in train_data_loader:
     print('input: ', x)
     print('input mask: ', x_mask)
     print('output: ', output)
-    print('output mask: ', target_mask)
+    print('output mask: ', target_mask) #.squeeze(0).squeeze(0).squeeze(0)[-1])
     print('target: ', x_target)
     print('predict: ', predict_index)
-
+    print('predict text: ', output_tokenizer.detokenize(predict_index.squeeze(0)))
+    print('target text: ', out_text)
     total_bleu += bleu(predict_index, x_target)
     break
 
 print('BLEU score: ',total_bleu/len(train_data_loader))
+
