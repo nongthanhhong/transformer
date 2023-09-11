@@ -31,9 +31,10 @@ def train_w_gpu(train_data_loader,
 
     #load if checkpoint
     trained_epoch = 0
-    if os.path.isfile(checkpoint_path):
-        print(f"Load model from check point: {checkpoint_path}")
-        trained_epoch, model, optimizer = load_checkpoint(model, optimizer, checkpoint_path)
+    
+    if os.path.isfile(saved_checkpoint_path):
+        print(f"Load model from check point: {saved_checkpoint_path}")
+        trained_epoch, model, optimizer = load_checkpoint(model, optimizer, saved_checkpoint_path)
 
     # Create a SummaryWriter instance for TensorBoard logging
     writer = SummaryWriter()
