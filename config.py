@@ -15,14 +15,14 @@ device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cp
 # device = torch.device('cpu')
 
 train_device = 'gpu' # or 'tpu'
-if train_device == 'gpu':
-   ckpt_dir = 'ckpt/gpu_train'
-   os.makedirs("ckpt_dir", exist_ok=True)
-   saved_checkpoint_path = "ckpt/gpu_train/transformer_AdamW_epoch_7_loss_9.1570_BLEU_0.0_m9_d9_3h_54m.pt"
-else:
-   ckpt_dir = 'ckpt/tpu_train'
-   os.makedirs("ckpt_dir", exist_ok=True)
-   saved_checkpoint_path = "ckpt/tpu_train/transformer_AdamW_epoch_7_loss_9.1570_BLEU_0.0_m9_d9_3h_54m.pt"
+
+ckpt_dir = 'ckpt/gpu_train'
+
+saved_checkpoint_path = "ckpt/gpu_train/transformer_AdamW_epoch_7_loss_9.1570_BLEU_0.0_m9_d9_3h_54m.pt"
+
+      # ckpt_dir = 'ckpt/tpu_train'
+      # os.makedirs("ckpt_dir", exist_ok=True)
+      # saved_checkpoint_path = "ckpt/tpu_train/transformer_AdamW_epoch_7_loss_9.1570_BLEU_0.0_m9_d9_3h_54m.pt"
 
 learning_rate = 1e-4
 batch_size = 256
