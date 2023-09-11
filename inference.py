@@ -1,4 +1,4 @@
-from train import *
+from gpu_train import *
 from config import *
 from preprocess_data import *
 import sys

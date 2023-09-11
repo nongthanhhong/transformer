@@ -82,16 +82,37 @@ class TranslationDataset(Dataset):
             "output_text": self.output_data[idx],
         }
 
-def Process_data(input_data, output_data, eval):
+# Define the create_data_loader function
+def create_data_loader(input_file, 
+                       output_file,
+                       batch_size,
+                       pretrained_tokenizer = False):
+    
+    # Read the source and target data from the specified files
+    with open(input_file, 'r', encoding='utf-8') as f:
+        input_data = f.readlines()
+    with open(output_file, 'r', encoding='utf-8') as f:
+        output_data = f.readlines()
+
+    input_data, output_data, input_tokenizer, output_tokenizer = Process_data(input_data, output_data, pretrained_tokenizer)
+
+    # Create an instance of TranslationDataset using the provided arguments
+    train_dataset = TranslationDataset(input_data, output_data, input_tokenizer, output_tokenizer)
+    # Create a DataLoader with the specified batch size and shuffling enabled
+    data_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+
+    # Return the DataLoader
+    return data_loader, input_tokenizer, output_tokenizer
+
+def Process_data(input_data, output_data, pretrained_tokenizer=False):
 
     input_data = process_raw_sentences(raw_data = input_data, lang = 'en')
     output_data = process_raw_sentences(raw_data = output_data, lang = 'vi')
 
-    # Store the source and target tokenizers
-    input_tokenizer = Tokenizer(sentences=input_data)
-    output_tokenizer = Tokenizer(sentences=output_data)
-    
-    if eval == False: 
+    if pretrained_tokenizer == False: 
+        # create tokenizers
+        input_tokenizer = Tokenizer(sentences=input_data)
+        output_tokenizer = Tokenizer(sentences=output_data)
         print("=======> Save tokenizer...")
         with open('resources/input_tokenizer.pkl', 'wb') as f:
             pickle.dump(input_tokenizer, f)
@@ -105,36 +126,6 @@ def Process_data(input_data, output_data, eval):
             output_tokenizer = pickle.load(f)
             
     return input_data, output_data, input_tokenizer, output_tokenizer
-
-# Define the create_data_loader function
-def create_data_loader(input_file, output_file, batch_size, eval):
-
-
-    print('=============== Load and process raw data ===============\n')
-    # Read the source and target data from the specified files
-    with open(input_file, 'r', encoding='utf-8') as f:
-        input_data = f.readlines()
-    with open(output_file, 'r', encoding='utf-8') as f:
-        output_data = f.readlines()
-
-    input_data, output_data, input_tokenizer, output_tokenizer = Process_data(input_data, output_data, eval)
-
-    input_train, input_val, output_train, output_val = train_test_split(input_data, output_data, test_size=0.1, random_state=999)
-    
-    print('\n=============== Generating train data loader ==============')
-    # Create an instance of TranslationDataset using the provided arguments
-    train_dataset = TranslationDataset(input_train, output_train, input_tokenizer, output_tokenizer)
-    # Create a DataLoader with the specified batch size and shuffling enabled
-    train_data_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-
-    print('\n=============== Generating validation data loader ==============')
-    # Create an instance of TranslationDataset using the provided arguments
-    val_dataset = TranslationDataset(input_val, output_val, input_tokenizer, output_tokenizer)
-    # Create a DataLoader with the specified batch size and shuffling enabled
-    val_data_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=True)
-
-    # Return the DataLoader
-    return train_data_loader, val_data_loader, input_tokenizer, output_tokenizer
 
 def process_raw_sentences(raw_data, lang):
 
@@ -155,12 +146,13 @@ def process_raw_sentences(raw_data, lang):
 
 def item_creator(input_tokenizer, output_tokenizer, input_data, output_data):
 
-    input = _padding([1] + input_tokenizer.tokenize(input_data) + [2])
-    output = _padding([1] + output_tokenizer.tokenize(output_data) + [2])
-    output_target = _padding(output_tokenizer.tokenize(output_data) + [2])
+    input = _padding([sos_id] + input_tokenizer.tokenize(input_data) + [eos_id])
+    output = _padding([sos_id] + output_tokenizer.tokenize(output_data) + [eos_id])
+    output_target = _padding(output_tokenizer.tokenize(output_data) + [eos_id] + [pad_id])
 
     return input, output, output_target
 
+# do padding if len sentence shorter than max len, truncating if longer than max len
 def _padding(tokenized_text):
     
     if len(tokenized_text) < max_len_input:
@@ -196,13 +188,20 @@ def create_masks(input, output):
 
     return input_mask[0], output_mask[0]
 
-def Data(input_file, output_file, batch_size: int = 32, eval=False):
+def Data(train_input, train_output, val_input, val_output, batch_size: int = 32):
 
     # Create the data loader
-    train_data_loader, val_data_loader, input_tokenizer, output_tokenizer = create_data_loader(input_file, 
-                                                                                                output_file,
-                                                                                                batch_size,
-                                                                                                eval)
+    print('\n=============== Generating Train data loader ==============')
+    train_data_loader, input_tokenizer, output_tokenizer = create_data_loader(train_input,
+                                                                              train_output,
+                                                                              batch_size)
+    
+    print('\n=============== Generating Validation data loader ==============')
+    val_data_loader, _, _ = create_data_loader(val_input, 
+                                               val_output,
+                                               batch_size,
+                                               pretrained_tokenizer = True)
+    
 
     return train_data_loader, val_data_loader, input_tokenizer, output_tokenizer
     

@@ -4,5 +4,5 @@ ckpt/*
 resources/**
 test.py
 dataset/**
-test_data.py
+data_test.py
 test.py
