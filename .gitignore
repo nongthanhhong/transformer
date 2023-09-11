@@ -1,5 +1,8 @@
 __pycache__/
 runs/
 ckpt/*
-resources/*
+resources/**
+test.py
+dataset/**
+test_data.py
 test.py

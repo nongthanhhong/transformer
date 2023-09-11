@@ -166,8 +166,13 @@ if __name__=='__main__':
     # Define your optimizer
     optimizer = create_optimizer(model.parameters())
 
+    #load if checkpoint
     checkpoint_path = "ckpt/transformer_AdamW_epoch_7_loss_9.1570_BLEU_0.0_m9_d9_3h_54m.pt"
-    _, model, optimizer = load_checkpoint(model, optimizer, checkpoint_path)
+    trained_epoch = 0
+    if os.path.isfile(checkpoint_path):
+        print(f"Load model from check point: {checkpoint_path}")
+        trained_epoch, model, optimizer = load_checkpoint(model, optimizer, checkpoint_path)
+
     # Create a SummaryWriter instance for TensorBoard logging
     writer = SummaryWriter()
 
@@ -188,8 +193,8 @@ if __name__=='__main__':
     start_time = time.time()
     best_epoch = 0
     pre_loss = 10**9
-    for epoch in range(num_epochs):
-        print(f'EPOCH {epoch + 1}:')
+    for epoch in range(trained_epoch + 1, trained_epoch + num_epochs + 1):
+        print(f'EPOCH {epoch}:')
         train_loss = train(train_data_loader, 
                            model,
                            loss_fn,
@@ -206,7 +211,7 @@ if __name__=='__main__':
         #check best epoch
         if val_loss < pre_loss:
             pre_loss = val_loss
-            best_epoch = epoch + 1
+            best_epoch = epoch
             
             now = datetime.datetime.now()
             checkpoint_path = f"{ckpt_dir}/transformer_{optimizer_name}_epoch_{epoch}_loss_{val_loss:.4f}_BLEU_{avg_bleu}_m{now.month}_d{now.day}_{now.hour}h_{now.minute}m.pt"
