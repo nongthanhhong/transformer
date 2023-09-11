@@ -56,8 +56,7 @@ def train_w_gpu(train_data_loader,
     start_time = time.time()
     best_epoch = 0
     pre_loss = 10**9
-    os.makedirs("ckpt_dir", exist_ok=True)
-    
+
     for epoch in range(trained_epoch + 1, trained_epoch + num_epochs + 1):
         print(f'EPOCH {epoch}:')
         train_loss = train(train_data_loader, 

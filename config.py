@@ -17,7 +17,7 @@ device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cp
 train_device = 'gpu' # or 'tpu'
 
 ckpt_dir = 'ckpt/gpu_train'
-
+os.makedirs(ckpt_dir, exist_ok=True)
 saved_checkpoint_path = "ckpt/gpu_train/transformer_AdamW_epoch_7_loss_9.1570_BLEU_0.0_m9_d9_3h_54m.pt"
 
       # ckpt_dir = 'ckpt/tpu_train'
@@ -41,6 +41,7 @@ log_interval = 100
 loss_fn = nn.CrossEntropyLoss(ignore_index=pad_id).to(device)
 
 optimizer_name = "AdamW"
+
 def create_optimizer(model_parameters):
  if optimizer_name == "AdamW":
     return torch.optim.AdamW(model_parameters, lr=learning_rate, betas=(0.9, 0.98),eps=1e-9)
