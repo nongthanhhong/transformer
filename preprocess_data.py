@@ -24,8 +24,7 @@ class Tokenizer:
         return [self.word2idx.get(word, self.word2idx['<unk>']) for word in sentence.split()]
 
     def detokenize(self, tokens):
-        return ' '.join([self.idx2word[token] for token in tokens if token > 3]
-)
+        return ' '.join([self.idx2word[token] for token in tokens if token > 3])
     
     def vocab_size(self):
         return len(self.vocab)
@@ -133,14 +132,16 @@ def process_raw_sentences(raw_data, lang):
     data = []
     if lang == "en":
         for line in tqdm(raw_data, desc="Processing raw text...", ncols=100):
-            line = re.sub(r'\W+$', '', line)
-            line = line.lower()
+            # line = re.sub(r'\W+$', '', line)
+            # line = line.lower()
             data.append(line)
     else:
         for line in tqdm(raw_data, desc="Processing raw text...", ncols=100):
-            line = re.sub(r'\W+$', '', line)
-            data.append(word_tokenize(text_normalize(line), format="text"))
+            # line = re.sub(r'\W+$', '', line)
+            # data.append(word_tokenize(text_normalize(line), format="text"))
+            # data.append(word_tokenize(line,format="text"))
             # data.append(text_normalize(line))
+            data.append(line)
 
     return data
 

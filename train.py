@@ -4,7 +4,10 @@ from config import *
 import os
 import argparse
 
-def train_w_gpu():
+def train_w_gpu(train_data_loader, 
+                    val_data_loader, 
+                    input_vocab_size,
+                    output_vocab_size):
     # Create the model
     model = Transformer(max_len=max_len_input,
                         input_vocab_size=input_vocab_size,
@@ -95,13 +98,13 @@ if __name__=='__main__':
     val_input = "dataset/PhoMT/tokenization/dev/dev.en"
     val_output = "dataset/PhoMT/tokenization/dev/dev.vi"
 
-    parser.add_argument('--train-input', type=str, required=True, help="path to train input file for train model",
+    parser.add_argument('--train-input', type=str, help="path to train input file for train model",
                         default=train_input)
-    parser.add_argument('--train-output', type=str, required=True, help="path to train output file for train model",
+    parser.add_argument('--train-output', type=str, help="path to train output file for train model",
                         default=train_output)
-    parser.add_argument('--val-input', type=str, required=True, help="path to validation input file for train model",
+    parser.add_argument('--val-input', type=str, help="path to validation input file for train model",
                         default=val_input)
-    parser.add_argument('--val-output', type=str, required=True, help="path to validation ouput file for train model",
+    parser.add_argument('--val-output', type=str, help="path to validation ouput file for train model",
                         default=val_output)
 
     args = parser.parse_args()
@@ -119,9 +122,7 @@ if __name__=='__main__':
 
     if train_device == 'gpu':
         train_w_gpu(train_data_loader, 
-                    val_data_loader, 
-                    input_tokenizer, 
-                    output_tokenizer,
+                    val_data_loader,
                     input_vocab_size,
                     output_vocab_size)
     if train_device == 'tpu':
