@@ -24,7 +24,7 @@ def train_w_gpu(train_data_loader,
         # dim = 0 [30, xxx] -> [10, ...], [10, ...], [10, ...] on 3 GPUs
         model = nn.DataParallel(model)
     
-    model.to(device)
+    model = model.to(device)
 
     # Define your optimizer
     optimizer = create_optimizer(model.parameters())
