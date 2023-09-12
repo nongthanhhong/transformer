@@ -94,7 +94,7 @@ if __name__=="__main__":
         input_data = process_raw_sentences(raw_data = [user_input], lang = 'en')
         # output_data = process_raw_sentences(raw_data = output_data, lang = 'vi')
         
-        input = _padding([1] + input_tokenizer.tokenize(input_data) + [2])
+        input = _padding([1] + list(input_tokenizer.tokenize(input_data)) + [2])
 
         input_mask = (input != pad_id).unsqueeze(0).unsqueeze(0).int()
 
