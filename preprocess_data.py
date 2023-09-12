@@ -41,9 +41,9 @@ class TranslationDataset(Dataset):
         self.output_data = output_data
         self.input_tokenizer = input_tokenizer
         self.output_tokenizer = output_tokenizer
-        self.sos_token = torch.tensor[list(self.input_tokenizer.tokenize("<sos>"))], dtype=torch.int64)
-        self.eos_token = torch.tensor(list(self.input_tokenizer.tokenize("<eos>"))], dtype=torch.int64)
-        self.pad_token = torch.tensor(list(self.input_tokenizer.tokenize("<pad>"))], dtype=torch.int64)
+        self.sos_token = torch.tensor(list(self.input_tokenizer.tokenize("<sos>")), dtype=torch.int64)
+        self.eos_token = torch.tensor(list(self.input_tokenizer.tokenize("<eos>")), dtype=torch.int64)
+        self.pad_token = torch.tensor(list(self.input_tokenizer.tokenize("<pad>")), dtype=torch.int64)
 
     def __len__(self):
 
@@ -169,9 +169,9 @@ def process_raw_sentences(raw_data, lang, processed = False):
 
 def item_creator(input_tokenizer, output_tokenizer, input_data, output_data):
 
-    input = _padding([sos_id] + input_tokenizer.tokenize(input_data) + [eos_id])
-    output = _padding([sos_id] + output_tokenizer.tokenize(output_data) + [eos_id])
-    output_target = _padding(output_tokenizer.tokenize(output_data) + [eos_id] + [pad_id])
+    input = _padding([sos_id] + list(input_tokenizer.tokenize(input_data)) + [eos_id])
+    output = _padding([sos_id] + list(output_tokenizer.tokenize(output_data)) + [eos_id])
+    output_target = _padding(list(output_tokenizer.tokenize(output_data)) + [eos_id] + [pad_id])
 
     return input, output, output_target
 
