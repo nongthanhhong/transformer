@@ -57,6 +57,14 @@ def load_resources():
     return model, input_tokenizer, output_tokenizer
 
 
+
+import re
+
+def remove_space_after_punctuation(sentence):
+    punctuation = re.compile(r' ([.!?])')
+    new_sentence = punctuation.sub(r'\1', sentence)
+    return new_sentence
+
 def greedy_search(encode_input, input_mask):
 
     return idx_sentence
@@ -75,6 +83,12 @@ if __name__=="__main__":
             user_input = input('English: ')
         except:
             print("Cannot connect to server, please try again later!")
+
+        sentence = "hello ! how are you ?"
+
+        new_sentence = remove_space_after_punctuation(sentence)
+
+        print(new_sentence)
 
         print(user_input)
         input_data = process_raw_sentences(raw_data = [user_input], lang = 'en')

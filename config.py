@@ -25,7 +25,7 @@ saved_checkpoint_path = "ckpt/gpu_train/transformer_AdamW_epoch_7_loss_9.1570_BL
       # saved_checkpoint_path = "ckpt/tpu_train/transformer_AdamW_epoch_7_loss_9.1570_BLEU_0.0_m9_d9_3h_54m.pt"
 
 learning_rate = 1e-4
-batch_size = 256
+batch_size = 128
 max_len_input = 50
 num_heads = 8
 num_layers = 6
