@@ -118,7 +118,7 @@ if __name__=='__main__':
                                                                                  args.val_input, args.val_output,
                                                                                  batch_size,
                                                                                  True,
-                                                                                 True)
+                                                                                 False)
     input_vocab_size = input_tokenizer.vocab_size()
     output_vocab_size = output_tokenizer.vocab_size()
 
