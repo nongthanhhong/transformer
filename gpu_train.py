@@ -94,7 +94,7 @@ def load_checkpoint(model, optimizer, checkpoint_path):
 # Define the log_progress function
 def log_progress(epoch, train_loss, val_loss=None, avg_bleu = None):
     # Log the current training epoch and training loss
-    print(f'\tEPOCH: {epoch+1} | Train Loss: {train_loss:.4f}', end='')
+    print(f'\tEPOCH: {epoch} | Train Loss: {train_loss:.4f}', end='')
     if val_loss is not None:
         # If validation loss is provided, log it as well
         print(f' | Val Loss: {val_loss:.4f}', end='')

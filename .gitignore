@@ -6,3 +6,4 @@ test.py
 dataset/**
 data_test.py
 test.py
+norm_token.py

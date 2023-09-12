@@ -6,22 +6,26 @@ import re
 import pickle
 from tqdm import tqdm
 from sklearn.model_selection import train_test_split
-
+import collections
 
 class Tokenizer:
     def __init__(self, sentences=None, save_path=None):
         if sentences is not None:
             print('=============== Init Tokenizer... ==============')
-            self.vocab = ['<pad>', '<sos>', '<eos>', '<unk>']
+            self.vocab = collections.defaultdict(int)
             for sentence in tqdm(sentences, desc="Vocabulary generating...", ncols=100):
                 for word in sentence.split():
-                    if word not in self.vocab:
-                        self.vocab.append(word)
+                    self.vocab[word] += 1
+            self.vocab = [
+                '<pad>', '<sos>', '<eos>', '<unk>',
+                *[word for word, count in self.vocab.items() if count > 0]
+            ]
             self.word2idx = {word: idx for idx, word in enumerate(self.vocab)}
             self.idx2word = {idx: word for idx, word in enumerate(self.vocab)}
 
     def tokenize(self, sentence):
-        return [self.word2idx.get(word, self.word2idx['<unk>']) for word in sentence.split()]
+        for word in sentence.split():
+            yield self.word2idx.get(word, self.word2idx['<unk>'])
 
     def detokenize(self, tokens):
         return ' '.join([self.idx2word[token] for token in tokens if token > 3])
@@ -85,6 +89,7 @@ class TranslationDataset(Dataset):
 def create_data_loader(input_file, 
                        output_file,
                        batch_size,
+                       processed,
                        pretrained_tokenizer = False):
     
     # Read the source and target data from the specified files
@@ -93,7 +98,7 @@ def create_data_loader(input_file,
     with open(output_file, 'r', encoding='utf-8') as f:
         output_data = f.readlines()
 
-    input_data, output_data, input_tokenizer, output_tokenizer = Process_data(input_data, output_data, pretrained_tokenizer)
+    input_data, output_data, input_tokenizer, output_tokenizer = Process_data(input_data, output_data, processed, pretrained_tokenizer)
 
     # Create an instance of TranslationDataset using the provided arguments
     train_dataset = TranslationDataset(input_data, output_data, input_tokenizer, output_tokenizer)
@@ -103,10 +108,10 @@ def create_data_loader(input_file,
     # Return the DataLoader
     return data_loader, input_tokenizer, output_tokenizer
 
-def Process_data(input_data, output_data, pretrained_tokenizer=False):
+def Process_data(input_data, output_data, processed = False, pretrained_tokenizer=False):
 
-    input_data = process_raw_sentences(raw_data = input_data, lang = 'en')
-    output_data = process_raw_sentences(raw_data = output_data, lang = 'vi')
+    input_data = process_raw_sentences(raw_data = input_data, lang = 'en', processed = processed)
+    output_data = process_raw_sentences(raw_data = output_data, lang = 'vi', processed = processed)
 
     if pretrained_tokenizer == False: 
         # create tokenizers
@@ -126,22 +131,38 @@ def Process_data(input_data, output_data, pretrained_tokenizer=False):
             
     return input_data, output_data, input_tokenizer, output_tokenizer
 
-def process_raw_sentences(raw_data, lang):
+def process_raw_sentences(raw_data, lang, processed = False):
 
-    # do some norm
-    data = []
-    if lang == "en":
-        for line in tqdm(raw_data, desc="Processing raw text...", ncols=100):
-            # line = re.sub(r'\W+$', '', line)
-            # line = line.lower()
-            data.append(line)
+    if processed == False:
+        # do some norm
+        data = []
+        if lang == "en":
+            for line in tqdm(raw_data, desc="Processing raw text...", ncols=100):
+                # line = re.sub(r'\W+$', '', line)
+                # line = line.lower()
+                data.append(line)
+        else:
+            for line in tqdm(raw_data, desc="Processing raw text...", ncols=100):
+                # line = re.sub(r'\W+$', '', line)
+                # line = line.lower()
+                data.append(word_tokenize(text_normalize(line), format="text"))
+                # data.append(word_tokenize(line,format="text"))
+                # data.append(text_normalize(line))
+                # data.append(line)
     else:
-        for line in tqdm(raw_data, desc="Processing raw text...", ncols=100):
-            # line = re.sub(r'\W+$', '', line)
-            # data.append(word_tokenize(text_normalize(line), format="text"))
-            # data.append(word_tokenize(line,format="text"))
-            # data.append(text_normalize(line))
-            data.append(line)
+        data = []
+        if lang == "en":
+            for line in tqdm(raw_data, desc="Processing raw text...", ncols=100):
+                # line = re.sub(r'\W+$', '', line)
+                # line = line.lower()
+                data.append(line)
+        else:
+            for line in tqdm(raw_data, desc="Processing raw text...", ncols=100):
+                # line = re.sub(r'\W+$', '', line)
+                # data.append(word_tokenize(text_normalize(line), format="text"))
+                # data.append(word_tokenize(line,format="text"))
+                # data.append(text_normalize(line))
+                data.append(line)
 
     return data
 
@@ -177,31 +198,31 @@ def _padding(tokenized_text):
     
     return tokenized_text
 
-def subsequent_mask(size):
-    mask = torch.triu(torch.ones((1, size, size)), diagonal=1).type(torch.int) == 0
-    return mask 
-
 def create_masks(input, output):
 
     input_mask = (input != pad_id).unsqueeze(0).unsqueeze(0).int(), # (1, 1, seq_len)
     
-    output_mask = (output != pad_id).unsqueeze(0).int() & subsequent_mask(output.size(0)), # (1, seq_len) & (1, seq_len, seq_len),
+    subsequent_mask = torch.triu(torch.ones((1, output.size(0), output.size(0))), diagonal=1).type(torch.int) == 0
+    output_mask = (output != pad_id).unsqueeze(0).int() & subsequent_mask, # (1, seq_len) & (1, seq_len, seq_len),
 
     return input_mask[0], output_mask[0]
 
-def Data(train_input, train_output, val_input, val_output, batch_size: int = 32):
+def Data(train_input, train_output, val_input, val_output, batch_size: int = 32, processed = False, pretrained_tokenizer = False):
 
     # Create the data loader
     print('\n=============== Generating Train data loader ==============')
     train_data_loader, input_tokenizer, output_tokenizer = create_data_loader(train_input,
                                                                               train_output,
-                                                                              batch_size)
+                                                                              batch_size,
+                                                                              processed,
+                                                                              pretrained_tokenizer)
     
     print('\n=============== Generating Validation data loader ==============')
     val_data_loader, _, _ = create_data_loader(val_input, 
                                                val_output,
                                                batch_size,
-                                               pretrained_tokenizer = True)
+                                               processed,
+                                               pretrained_tokenizer)
     
 
     return train_data_loader, val_data_loader, input_tokenizer, output_tokenizer

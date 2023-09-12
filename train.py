@@ -115,8 +115,10 @@ if __name__=='__main__':
     
 
     train_data_loader, val_data_loader, input_tokenizer, output_tokenizer = Data(args.train_input, args.train_output, 
-                                                                                 args.val_input, args.val_output, 
-                                                                                 batch_size)
+                                                                                 args.val_input, args.val_output,
+                                                                                 batch_size,
+                                                                                 True,
+                                                                                 True)
     input_vocab_size = input_tokenizer.vocab_size()
     output_vocab_size = output_tokenizer.vocab_size()
 
