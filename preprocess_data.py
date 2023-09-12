@@ -41,9 +41,9 @@ class TranslationDataset(Dataset):
         self.output_data = output_data
         self.input_tokenizer = input_tokenizer
         self.output_tokenizer = output_tokenizer
-        self.sos_token = torch.tensor([self.input_tokenizer.tokenize("<sos>")], dtype=torch.int64)
-        self.eos_token = torch.tensor([self.input_tokenizer.tokenize("<eos>")], dtype=torch.int64)
-        self.pad_token = torch.tensor([self.input_tokenizer.tokenize("<pad>")], dtype=torch.int64)
+        self.sos_token = torch.tensor[list(self.input_tokenizer.tokenize("<sos>"))], dtype=torch.int64)
+        self.eos_token = torch.tensor(list(self.input_tokenizer.tokenize("<eos>"))], dtype=torch.int64)
+        self.pad_token = torch.tensor(list(self.input_tokenizer.tokenize("<pad>"))], dtype=torch.int64)
 
     def __len__(self):
 
@@ -150,6 +150,7 @@ def process_raw_sentences(raw_data, lang, processed = False):
                 # data.append(text_normalize(line))
                 # data.append(line)
     else:
+        print('========= Data processed =======')
         data = []
         if lang == "en":
             for line in tqdm(raw_data, desc="Processing raw text...", ncols=100):
