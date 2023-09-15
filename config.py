@@ -25,9 +25,9 @@ saved_checkpoint_path = "ckpt/gpu_train/transformer_AdamW_epoch_7_loss_9.1570_BL
       # saved_checkpoint_path = "ckpt/tpu_train/transformer_AdamW_epoch_7_loss_9.1570_BLEU_0.0_m9_d9_3h_54m.pt"
 
 learning_rate = 1e-4
-batch_size = 20
+batch_size = 32
 max_len_input = 50
-num_heads = 6
+num_heads = 4
 num_layers = 4
 d_model = 300
 d_ff = 2048
@@ -35,7 +35,7 @@ d_k = d_model // num_heads
 drop_out_rate = 0.1
 num_epochs = 10
 beam_size = 8
-log_interval = 1000
+log_interval = 100
 
 # Define the loss function and optimizer
 loss_fn = nn.CrossEntropyLoss(ignore_index=pad_id).to(device)

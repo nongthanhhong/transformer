@@ -7,7 +7,8 @@ import argparse
 def train_w_gpu(train_data_loader, 
                     val_data_loader, 
                     input_vocab_size,
-                    output_vocab_size):
+                    output_vocab_size,
+                    output_tokenizer):
     # Create the model
     model = Transformer(max_len=max_len_input,
                         input_vocab_size=input_vocab_size,
@@ -63,12 +64,14 @@ def train_w_gpu(train_data_loader,
                            model,
                            loss_fn,
                            optimizer,
+                           output_tokenizer,
                            scheduler,
                            writer,
                            log_interval)
         val_loss, avg_bleu = evaluate(val_data_loader,
                             model,
-                            loss_fn)
+                            loss_fn,
+                            output_tokenizer)
         log_progress(epoch, train_loss, val_loss, avg_bleu)
         writer.add_scalar("Loss/train_epoch", train_loss, epoch, val_loss)
         
@@ -95,10 +98,11 @@ if __name__=='__main__':
     parser = argparse.ArgumentParser()
     
     # Set the file paths and other parameters
-    train_input = "dataset/PhoMT/tokenization/train/train.en"
-    train_output = "dataset/PhoMT/tokenization/train/train.vi"
-    val_input = "dataset/PhoMT/tokenization/dev/dev.en"
-    val_output = "dataset/PhoMT/tokenization/dev/dev.vi"
+    
+    train_input = "dataset/MT-EV-VLSP2020/openSub/data.en"
+    train_output = "dataset/MT-EV-VLSP2020/openSub/data.vi"
+    val_input = "dataset/MT-EV-VLSP2020/basic/data.en"
+    val_output = "dataset/MT-EV-VLSP2020/basic/data.vi"
 
     parser.add_argument('--train-input', type=str, help="path to train input file for train model",
                         default=train_input)
@@ -112,13 +116,9 @@ if __name__=='__main__':
     args = parser.parse_args()
 
     
-    
-
     train_data_loader, val_data_loader, input_tokenizer, output_tokenizer = Data(args.train_input, args.train_output, 
                                                                                  args.val_input, args.val_output,
-                                                                                 batch_size,
-                                                                                 True,
-                                                                                 False)
+                                                                                 batch_size)
     input_vocab_size = input_tokenizer.vocab_size()
     output_vocab_size = output_tokenizer.vocab_size()
 
@@ -128,6 +128,7 @@ if __name__=='__main__':
         train_w_gpu(train_data_loader, 
                     val_data_loader,
                     input_vocab_size,
-                    output_vocab_size)
+                    output_vocab_size,
+                    output_tokenizer)
     if train_device == 'tpu':
         train_w_tpu()

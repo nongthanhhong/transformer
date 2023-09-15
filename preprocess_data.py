@@ -7,14 +7,18 @@ import pickle
 from tqdm import tqdm
 from sklearn.model_selection import train_test_split
 import collections
+import nltk
+nltk.download('punkt')
+import numpy as np
+
 
 class Tokenizer:
-    def __init__(self, sentences=None, save_path=None):
+    def __init__(self, sentences=None):
         if sentences is not None:
             print('=============== Init Tokenizer... ==============')
             self.vocab = collections.defaultdict(int)
             for sentence in tqdm(sentences, desc="Vocabulary generating...", ncols=100):
-                for word in sentence.split():
+                for word in sentence.split('_'):
                     self.vocab[word] += 1
             self.vocab = [
                 '<pad>', '<sos>', '<eos>', '<unk>',
@@ -24,11 +28,30 @@ class Tokenizer:
             self.idx2word = {idx: word for idx, word in enumerate(self.vocab)}
 
     def tokenize(self, sentence):
-        for word in sentence.split():
+        for word in sentence.split('_'):
             yield self.word2idx.get(word, self.word2idx['<unk>'])
 
-    def detokenize(self, tokens):
-        return ' '.join([self.idx2word[token] for token in tokens if token > 3])
+    def detokenize(self, tokens, mode = 1):
+        """Detokenizes a list of indices or a NumPy array of indices into a string.
+
+        Args:
+            tokens: A list of indices or a NumPy array of indices.
+            mode: 1 - for validation phase to calculate BLEU score, 2 - for deploy 
+
+        Returns:
+            A string containing the detokenized sentence.
+        """
+
+        sentence = []
+        for token in tokens:
+            if int(token) == eos_id:
+                break
+            sentence.append(int(token))
+
+        if mode == 1: 
+            return [self.idx2word[token] for token in sentence]
+        elif mode == 2: 
+            return ' '.join([self.idx2word[token] for token in sentence])
     
     def vocab_size(self):
         return len(self.vocab)
@@ -89,7 +112,6 @@ class TranslationDataset(Dataset):
 def create_data_loader(input_file, 
                        output_file,
                        batch_size,
-                       processed,
                        pretrained_tokenizer = False):
     
     # Read the source and target data from the specified files
@@ -98,7 +120,7 @@ def create_data_loader(input_file,
     with open(output_file, 'r', encoding='utf-8') as f:
         output_data = f.readlines()
 
-    input_data, output_data, input_tokenizer, output_tokenizer = Process_data(input_data, output_data, processed, pretrained_tokenizer)
+    input_data, output_data, input_tokenizer, output_tokenizer = Process_data(input_data, output_data, pretrained_tokenizer)
 
     # Create an instance of TranslationDataset using the provided arguments
     train_dataset = TranslationDataset(input_data, output_data, input_tokenizer, output_tokenizer)
@@ -108,10 +130,10 @@ def create_data_loader(input_file,
     # Return the DataLoader
     return data_loader, input_tokenizer, output_tokenizer
 
-def Process_data(input_data, output_data, processed = False, pretrained_tokenizer=False):
+def Process_data(input_data, output_data, pretrained_tokenizer=False):
 
-    input_data = process_raw_sentences(raw_data = input_data, lang = 'en', processed = processed)
-    output_data = process_raw_sentences(raw_data = output_data, lang = 'vi', processed = processed)
+    input_data = process_raw_sentences(raw_data = input_data, lang = 'en')
+    output_data = process_raw_sentences(raw_data = output_data, lang = 'vi')
 
     if pretrained_tokenizer == False: 
         # create tokenizers
@@ -131,47 +153,29 @@ def Process_data(input_data, output_data, processed = False, pretrained_tokenize
             
     return input_data, output_data, input_tokenizer, output_tokenizer
 
-def process_raw_sentences(raw_data, lang, processed = False):
+def process_raw_sentences(raw_data, lang):
 
-    if processed == False:
-        # do some norm
-        data = []
-        if lang == "en":
-            for line in tqdm(raw_data, desc="Processing raw text...", ncols=100):
-                # line = re.sub(r'\W+$', '', line)
-                # line = line.lower()
-                data.append(line)
-        else:
-            for line in tqdm(raw_data, desc="Processing raw text...", ncols=100):
-                # line = re.sub(r'\W+$', '', line)
-                # line = line.lower()
-                data.append(word_tokenize(text_normalize(line), format="text"))
-                # data.append(word_tokenize(line,format="text"))
-                # data.append(text_normalize(line))
-                # data.append(line)
+    # do some norm
+    data = []
+    if lang == "en":
+        for line in tqdm(raw_data, desc="Processing raw text...", ncols=100):
+            tokens = nltk.word_tokenize(line)
+            tokens = '_'.join(token for token in tokens)
+            data.append(tokens)
     else:
-        print('========= Data processed =======')
-        data = []
-        if lang == "en":
-            for line in tqdm(raw_data, desc="Processing raw text...", ncols=100):
-                # line = re.sub(r'\W+$', '', line)
-                # line = line.lower()
-                data.append(line)
-        else:
-            for line in tqdm(raw_data, desc="Processing raw text...", ncols=100):
-                # line = re.sub(r'\W+$', '', line)
-                # data.append(word_tokenize(text_normalize(line), format="text"))
-                # data.append(word_tokenize(line,format="text"))
-                # data.append(text_normalize(line))
-                data.append(line)
+        for line in tqdm(raw_data, desc="Processing raw text...", ncols=100):
+            tokens = word_tokenize(text_normalize(line))
+            tokens = '_'.join(token for token in tokens)
+            data.append(tokens)
 
     return data
 
 def item_creator(input_tokenizer, output_tokenizer, input_data, output_data):
 
     input = _padding([sos_id] + list(input_tokenizer.tokenize(input_data)) + [eos_id])
-    output = _padding([sos_id] + list(output_tokenizer.tokenize(output_data)) + [eos_id])
-    output_target = _padding(list(output_tokenizer.tokenize(output_data)) + [eos_id] + [pad_id])
+    ouput_idx = list(output_tokenizer.tokenize(output_data))
+    output = _padding([sos_id] + ouput_idx + [eos_id])
+    output_target = _padding(ouput_idx + [eos_id] + [pad_id])
 
     return input, output, output_target
 
@@ -208,21 +212,19 @@ def create_masks(input, output):
 
     return input_mask[0], output_mask[0]
 
-def Data(train_input, train_output, val_input, val_output, batch_size: int = 32, processed = False, pretrained_tokenizer = False):
+def Data(train_input, train_output, val_input, val_output, batch_size: int = 32, pretrained_tokenizer = False):
 
     # Create the data loader
     print('\n=============== Generating Train data loader ==============')
     train_data_loader, input_tokenizer, output_tokenizer = create_data_loader(train_input,
                                                                               train_output,
                                                                               batch_size,
-                                                                              processed,
                                                                               pretrained_tokenizer)
     
     print('\n=============== Generating Validation data loader ==============')
     val_data_loader, _, _ = create_data_loader(val_input, 
                                                val_output,
                                                batch_size,
-                                               processed,
                                                pretrained_tokenizer)
     
 

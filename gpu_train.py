@@ -16,12 +16,19 @@ from nltk.translate import bleu, bleu_score
 
 
 # Define the train function
-def train(train_data_loader, model, loss_fn, optimizer, scheduler, writer, log_interval):
+def train(train_data_loader, 
+          model, loss_fn, 
+          optimizer,
+          output_tokenizer, 
+          scheduler, 
+          writer, 
+          log_interval):
 
     # Set the model to training mode
     model.train()
     total_loss = 0
     batch_total_loss = 0
+    total_bleu = 0
     for i, batch in enumerate(train_data_loader):
         torch.cuda.empty_cache()
         input, output, output_target, input_mask, output_mask, _, _ = batch.values()
@@ -61,12 +68,24 @@ def train(train_data_loader, model, loss_fn, optimizer, scheduler, writer, log_i
         total_loss += loss.item()
         batch_total_loss += loss.item()
 
+        predict_index = torch.argmax(predict, dim=-1)
+
+        for pred, tar in zip(predict_index, output_target):
+            predict_words = output_tokenizer.detokenize(pred.squeeze(0), 1)
+            output_target_words = output_tokenizer.detokenize(tar.squeeze(0), 1)
+            try:
+                total_bleu += bleu(predict_words, output_target_words)
+            except:
+                total_bleu += 0
+
         # log during train
         if (i+1) % log_interval == 0:
             avg_loss = batch_total_loss / log_interval
-            print(f'\tBatch: {i+1}/{len(train_data_loader)} | Loss: {avg_loss:.4f}')
+            avg_bleu = total_bleu / log_interval
+            print(f'\tBatch: {i+1}/{len(train_data_loader)} | Loss: {avg_loss:.4f} | Avg BLEU: {avg_bleu:.4f}')
             writer.add_scalar("Loss/train_batch", avg_loss, i + 1)
             batch_total_loss = 0
+            total_bleu = 0
 
     # Return average training loss
     return total_loss / len(train_data_loader)
@@ -101,7 +120,7 @@ def log_progress(epoch, train_loss, val_loss=None, avg_bleu = None):
     print(f' | BLEU score: {avg_bleu:.2f}', end='')
 
 # Define the evaluate function
-def evaluate(val_data_loader, model, loss_fn):
+def evaluate(val_data_loader, model, loss_fn, output_tokenizer):
     # Set the model to evaluation mode
     model.eval()
     total_loss = 0
@@ -127,7 +146,14 @@ def evaluate(val_data_loader, model, loss_fn):
             # Accumulate total loss.
             total_loss += loss.item()
             predict_index = torch.argmax(predict, dim=-1)
-            total_bleu += bleu(predict_index, output_target)
+        
+            for pred, tar in zip(predict_index, output_target):
+                predict_words = output_tokenizer.detokenize(pred.squeeze(0), 1)
+                output_target_words = output_tokenizer.detokenize(tar.squeeze(0), 1)
+                try:
+                    total_bleu += bleu(predict_words, output_target_words)
+                except:
+                    total_bleu += 0
 
     # Return average validation loss.
     avg_bleu = total_bleu / len(val_data_loader)
