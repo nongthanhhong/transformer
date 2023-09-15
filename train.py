@@ -8,7 +8,8 @@ def train_w_gpu(train_data_loader,
                     val_data_loader, 
                     input_vocab_size,
                     output_vocab_size,
-                    output_tokenizer):
+                    output_tokenizer,
+                    ckpt_path):
     # Create the model
     model = Transformer(max_len=max_len_input,
                         input_vocab_size=input_vocab_size,
@@ -33,9 +34,9 @@ def train_w_gpu(train_data_loader,
     #load if checkpoint
     trained_epoch = 0
     
-    if os.path.isfile(saved_checkpoint_path):
-        print(f"Load model from check point: {saved_checkpoint_path}")
-        trained_epoch, model, optimizer = load_checkpoint(model, optimizer, saved_checkpoint_path)
+    if os.path.isfile(ckpt_path):
+        print(f"Load model from check point: {ckpt_path}")
+        trained_epoch, model, optimizer = load_checkpoint(model, optimizer, ckpt_path)
 
     # Create a SummaryWriter instance for TensorBoard logging
     writer = SummaryWriter()
@@ -112,6 +113,8 @@ if __name__=='__main__':
                         default=val_input)
     parser.add_argument('--val-output', type=str, help="path to validation ouput file for train model",
                         default=val_output)
+    parser.add_argument('--ckpt-path', type=str, help="path to checkpoint",
+                        default=None)
 
     args = parser.parse_args()
 
@@ -129,6 +132,7 @@ if __name__=='__main__':
                     val_data_loader,
                     input_vocab_size,
                     output_vocab_size,
-                    output_tokenizer)
+                    output_tokenizer,
+                    args.ckpt_path)
     if train_device == 'tpu':
         train_w_tpu()
