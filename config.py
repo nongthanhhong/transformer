@@ -35,7 +35,7 @@ d_k = d_model // num_heads
 drop_out_rate = 0.1
 num_epochs = 10
 beam_size = 8
-log_interval = 500
+log_interval = 3000
 
 # Define the loss function and optimizer
 loss_fn = nn.CrossEntropyLoss(ignore_index=pad_id).to(device)
