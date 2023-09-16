@@ -84,7 +84,7 @@ def train_w_gpu(train_data_loader,
             now = datetime.datetime.now()
             checkpoint_path = f"{ckpt_dir}/transformer_{optimizer_name}_epoch_{epoch}_loss_{val_loss:.4f}_BLEU_{avg_bleu}_m{now.month}_d{now.day}_{now.hour}h_{now.minute}m.pt"
             save_checkpoint(model, optimizer, epoch, val_loss, checkpoint_path)
-            print('\n')
+        print('\n')
 
         
     end_time = time.time() - start_time
