@@ -99,7 +99,7 @@ def save_checkpoint(model, optimizer, epoch, val_loss, checkpoint_path):
         'epoch': epoch,
         'val_loss': val_loss
     }, checkpoint_path)
-    print('\tSaved checkpoint!')
+    print('\tSaved checkpoint!', end='')
 
 def load_checkpoint(model, optimizer, checkpoint_path):
     # Load the state of the model, optimizer, and current epoch from the specified checkpoint file
